@@ -7,20 +7,17 @@
     };
   };
 
-  outputs =
-    inputs:
-    let
-      forAllSystems = with inputs.nixpkgs; lib.genAttrs lib.systems.flakeExposed;
-    in
-    {
-      services = forAllSystems (
-        system:
-        import ./svcs {
-          inherit (inputs) nixpkgs;
-          inherit system;
-        }
-      );
-      lib = import ./lib inputs.nixpkgs.lib;
-    };
+  outputs = inputs: 
+  let 
+    forAllSystems = with inputs.nixpkgs; lib.genAttrs lib.systems.flakeExposed;
+  in
+  {
+  
+    services = forAllSystems(system: import ./svcs {
+      inherit (inputs) nixpkgs;
+      nixpkgsConfig = {inherit system;};
+    });
+    lib = import ./lib inputs.nixpkgs.lib;
+  };
 
 }

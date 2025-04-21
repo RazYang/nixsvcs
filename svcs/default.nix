@@ -1,13 +1,11 @@
 {
   nixpkgs,
-  system,
-  localSystem ? system,
-  crossSystem ? localSystem,
+  nixpkgsConfig ? { },
   overlays ? [ ],
   ...
-}:
+}@args:
 let
-  pkgs = import nixpkgs { inherit system; };
+  pkgs = import nixpkgs nixpkgsConfig;
   lib = nixpkgs.lib // (import ../lib nixpkgs.lib);
 
   autoCalledServices = import ./by-name-overlay.nix lib ./by-name;
@@ -18,8 +16,14 @@ let
     in
     res;
 
+  svcsCross =
+    self: supper: {
+       svcsCross = lib.mapAttrs (_: crossSystem: import ./. (args // { nixpkgsConfig = nixpkgsConfig // {inherit crossSystem;}; })) lib.systems.examples;
+    };
+
   toFix = lib.foldl' (lib.flip lib.extends) (self: { }) (
     [
+      svcsCross
       autoCalledServices
       allServices
     ]
