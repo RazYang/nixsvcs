@@ -38,16 +38,27 @@
           (lib.concat rootPaths)
         ];
     in
-    { rootPaths }:
+    { name, rootPaths }:
     lib.pipe (fun { inherit rootPaths; }) [
       (lib.map (path: "ln -s ${path} ./${path.passthru.sname}"))
       lib.concatLines
       (
         commands:
-        (pkgs.runCommand "service-closure" { } ''
+        (pkgs.runCommand "${name}-closure" { } ''
           mkdir $out
           pushd $out
           ${commands}
+          popd
+        '')
+      )
+
+      (
+        drv:
+        (pkgs.runCommand "${name}" { } ''
+          mkdir $out
+          pushd $out
+          ln -s ${drv} $out/source
+          ${pkgs.s6-rc}/bin/s6-rc-compile $out/svcs $out/source
           popd
         '')
       )

@@ -32,13 +32,36 @@ let
     svcClosure = lib.pipe (callSelf { }) [
       (lib.mapAttrs (
         name: value:
-        if lib.isDerivation value then self.mkS6ServiceClosure { rootPaths = [ value ]; } else value
+        if lib.isDerivation value then
+          self.mkS6ServiceClosure {
+            inherit name;
+            rootPaths = [ value ];
+          }
+        else
+          value
+      ))
+    ];
+  };
+  svcImage = self: supper: {
+    svcImage = lib.pipe (callSelf { }).svcClosure [
+      (lib.mapAttrs (
+        name: value:
+        pkgs.dockerTools.buildImage {
+          name = "${name}";
+          tag = "latest";
+          copyToRoot = pkgs.buildEnv {
+            name = "${name}-root";
+            paths = [ value ];
+            pathsToLink = [ "/svcs" ];
+          };
+        }
       ))
     ];
   };
 
   toFix = lib.foldl' (lib.flip lib.extends) (self: { }) (
     [
+      svcImage
       svcClosure
       svcsCross
       autoCalledServices

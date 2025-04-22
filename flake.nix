@@ -18,7 +18,10 @@
         system:
         import ./svcs {
           inherit (inputs) nixpkgs;
-          nixpkgsConfig = { inherit system; };
+          nixpkgsConfig = {
+            inherit system;
+            #overlays = [];
+          };
         }
       );
       lib = import ./lib inputs.nixpkgs.lib;
