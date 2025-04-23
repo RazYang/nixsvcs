@@ -13,8 +13,8 @@
 let
   run = pkgs.writeShellScript "${sname}-run" ''
     while true;do
-      ${pkgs.coreutils}/bin/sleep 3;
       echo ${sname}
+      ${pkgs.s6-portable-utils}/bin/s6-sleep 3;
     done
   '';
 in
