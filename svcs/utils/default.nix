@@ -25,6 +25,8 @@
         sdeps = deps;
       };
     };
+
+  # TODO:
   mkS6Oneshot = { }: { };
 
   # recursive get sdeps dependencies
@@ -40,27 +42,56 @@
     in
     { name, rootPaths }:
     lib.pipe (fun { inherit rootPaths; }) [
-      (lib.map (path: "ln -s ${path} ./${path.passthru.sname}"))
-      lib.concatLines
+      # generate service closure
       (
-        commands:
+        pipeArg:
         (pkgs.runCommand "${name}-closure" { } ''
           mkdir $out
           pushd $out
-          ${commands}
+          ${lib.pipe pipeArg [
+            (lib.map (x: "ln -s ${x} ./${x.passthru.sname}"))
+            lib.concatLines
+          ]}
           popd
         '')
       )
 
+      # from service closure to init script
       (
-        drv:
-        (pkgs.runCommand "${name}" { } ''
-          mkdir $out
-          pushd $out
-          ln -s ${drv} $out/source
-          ${pkgs.s6-rc}/bin/s6-rc-compile $out/svcs $out/source
-          popd
-        '')
+        svcs-source:
+        (
+          let
+            svcId = builtins.toString (builtins.match "/nix/store/(.*)-${name}-closure" "${svcs-source}");
+          in
+          pkgs.writeShellApplication {
+            name = "init";
+            runtimeEnv = {
+              svcdir = "/run/${svcId}";
+            };
+            runtimeInputs = with pkgs; [
+              s6
+              s6-portable-utils.bin
+              (lib.infuse s6-rc { __attr.configureFlags.__append = [ "--livedir=/run/${svcId}/live" ]; })
+            ];
+            bashOptions = [
+              "errexit"
+              "pipefail"
+              "monitor"
+            ];
+            text = ''
+              s6-mkdir -p $svcdir/scandir
+              s6-rc-compile $svcdir/compiled ${svcs-source}
+              s6-svscan $svcdir/scandir &
+              s6-rc-init -c $svcdir/compiled $svcdir/scandir
+              ${lib.pipe rootPaths [
+                (lib.map (x: "s6-rc -ua change ${x.passthru.sname}"))
+                lib.concatLines
+              ]}
+              fg > /dev/null
+            '';
+          }
+        )
       )
+
     ];
 }

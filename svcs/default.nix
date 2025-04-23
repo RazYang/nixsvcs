@@ -5,9 +5,11 @@
   ...
 }@args:
 let
-  pkgs = import nixpkgs nixpkgsConfig;
+  pkgs = (import nixpkgs nixpkgsConfig) // {
+    native = import nixpkgs (builtins.removeAttrs nixpkgsConfig [ "crossSystem" ]);
+  };
   lib = nixpkgs.lib // (import ../lib nixpkgs.lib);
-  callSelf = newArgs: import ./. args // newArgs;
+  callSelf = newArgs: import ./. (args // { nixpkgsConfig = (args.nixpkgsConfig // newArgs); });
 
   autoCalledServices = import ./by-name-overlay.nix lib ./by-name;
   allServices =
@@ -21,9 +23,7 @@ let
     svcsCross = lib.mapAttrs (
       _: crossSystem:
       callSelf {
-        nixpkgsConfig = nixpkgsConfig // {
-          inherit crossSystem;
-        };
+        inherit crossSystem;
       }
     ) lib.systems.examples;
   };
@@ -42,6 +42,7 @@ let
       ))
     ];
   };
+
   svcImage = self: supper: {
     svcImage = lib.pipe (callSelf { }).svcClosure [
       (lib.mapAttrs (
@@ -52,7 +53,7 @@ let
           copyToRoot = pkgs.buildEnv {
             name = "${name}-root";
             paths = [ value ];
-            pathsToLink = [ "/svcs" ];
+            pathsToLink = [ "/bin" ];
           };
         }
       ))
