@@ -1,5 +1,5 @@
 {
-  description = "RazYang's Nix Flake Configurations";
+  description = "nixsvcs nix flake repository";
 
   inputs = {
     nixpkgs = {
