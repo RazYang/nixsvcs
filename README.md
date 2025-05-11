@@ -31,6 +31,7 @@ nix build 'github:razyang/nixsvcs#services.x86_64-linux.svcsCross.musl64.svcImag
 When cross-compiling with musl:
 * Minimal service closure: ~10M
 * Container image size: ~3M
+
 When using glibc:
 * Minimal service closure: ~37M
 * Container image size: ~12M
